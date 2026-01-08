@@ -1,0 +1,56 @@
+#include <SoftwareSerial.h>
+
+#define RELAY_PIN 7     // Relay control pin
+#define POWER_INPUT A0  // First 5V analog input (Main power status)
+#define GROUND_INPUT A1 // Second 5V analog input (Ground status)
+#define LED_PIN 13      // Status LED (optional)
+
+SoftwareSerial BT(10, 11); // Bluetooth module (TX, RX)
+
+void setup() {
+    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(RELAY_PIN, LOW); // Ensure relay is OFF initially
+    BT.begin(9600);
+    Serial.begin(9600);
+}
+
+void loop() {
+    int powerStatus = analogRead(POWER_INPUT);
+    int groundStatus = analogRead(GROUND_INPUT);
+    
+    // Checking for power failure
+    if (powerStatus < 500) { 
+        BT.println("NO CURRENT");
+        Serial.println("NO CURRENT");
+        digitalWrite(LED_PIN, LOW);
+        delay(5000); // Wait for 5 seconds before continuing the loop
+        return;
+    } 
+    // Checking for ground fault
+    else if (groundStatus < 500) { 
+        BT.println("Ground Fault");
+        Serial.println("Ground Fault");
+        digitalWrite(RELAY_PIN, LOW); // Turn off the relay
+        delay(5000); // Wait for 5 seconds before continuing the loop
+        return;
+    } 
+    else {
+        Serial.println("System Normal");
+        digitalWrite(LED_PIN, HIGH);
+        delay(5000);
+    }
+
+    // Check if a command is received from the app
+    if (BT.available()) {
+        String command = BT.readString();
+        command.trim();
+        if (command == "TURN_ON_RELAY") {
+            digitalWrite(RELAY_PIN, HIGH);
+            BT.println("Relay ON");
+            Serial.println("Relay ON");
+        }
+    }
+
+    delay(1000); // Small delay to avoid rapid state changes
+}
